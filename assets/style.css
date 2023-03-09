@@ -7,8 +7,8 @@ body {
 
 
 .header {
-    background-color: #222222;
-    height: 256px;
+
+    height: 50px;
     padding: 50px;
     display: flex;
     flex-direction: column;
