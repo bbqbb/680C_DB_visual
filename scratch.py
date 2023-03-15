@@ -24,11 +24,36 @@ from main import yyyy
 #
 # print(df['Date'])
 
-data = pd.read_excel("T-Shirt.HD - Copy.csv", sheet_name="Follow-up")
-data['Date'] = data['Date'].str.extract(r'(\d{1,2}\.\d{1,2}\.\d{2,4})')
-data['Date'] = data['Date'].apply(yyyy)
+import dash
+from dash import dcc, html
+import pandas as pd
+
+data = pd.read_excel("T-Shirt.HD - Copy.xlsx", sheet_name="Trial-Run")
 data['Date'] = pd.to_datetime(data['Date'], format="%m.%d.%Y", errors='coerce')
 data.sort_values("Date", inplace=True)
-data['Date'].dropna(inplace=True)
 
-print(data)
+start_date = '2013-04-11 00:00:00'
+end_date = data.Date.max()
+mask = (data.Date >= start_date) & (data.Date <= end_date)
+filter_data = data.loc[mask]
+
+chart_data = {'x': filter_data['Date'], 'y': filter_data['md_tear'], 'type': 'scatter'}
+
+app = dash.Dash(__name__)
+
+app.layout = html.Div(children=[
+    dcc.Graph(
+        id='my-chart',
+        figure={
+            'data': [chart_data],
+            'layout': {
+                'title': 'My Chart',
+                'xaxis': {'title': 'X Axis Label'},
+                'yaxis': {'title': 'Y Axis Label'}
+            }
+        }
+    )
+])
+
+if __name__ == '__main__':
+    app.run_server(debug=True, port=7777)

@@ -1,6 +1,6 @@
 import dash
 from dash import dcc, html, Dash
-from main import yyyy
+from main import yyyy, fraction_to_decimal
 import pandas as pd
 from dash.dependencies import Output, Input
 import numpy as np
@@ -9,6 +9,7 @@ import openpyxl
 data = pd.read_excel("T-Shirt.HD - Copy.xlsx", sheet_name="Trial-Run")
 data['Date'] = data['Date'].str.extract(r'(\d{1,2}\.\d{1,2}\.\d{2,4})')
 data['Date'] = data['Date'].apply(yyyy)
+# data['Layflat'] = data['Layflat'].apply(fraction_to_decimal)
 data['Date'] = pd.to_datetime(data['Date'], format="%m.%d.%Y", errors='coerce')
 data.sort_values("Date", inplace=True)
 # data = pd.read_csv("avocado.csv")
@@ -58,8 +59,9 @@ app.layout = html.Div(
                     dcc.Dropdown(id="resin",
                                  placeholder="Resin",
                                  options=[
-                                     "HD", "LDPE"
+                                     'All', "HD", "LDPE"
                                  ],
+
                                  style={'width': '75px'})
                 ),
                 html.Div(
@@ -67,10 +69,10 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="color_filter",
                             placeholder="Color",
-                            options=[
-                                {"label": color, "value": color}
-                                for color in data["Color"].unique()
-                            ],
+                            options=[{'label': 'All', 'value': 'All'}] +
+                                    [{"label": color, "value": color}
+                                     for color in data["Color"].unique()]
+                            ,
                             style={'width': '120px'}
                         )
                     ]
@@ -78,7 +80,7 @@ app.layout = html.Div(
                 html.Div(
                     children=[
                         dcc.Dropdown(
-                            id="line-filter",
+                            id="line_filter",
                             multi=True, placeholder="Line Numer",
                             options=[
                                 {"label": line, "value": line}
@@ -89,11 +91,13 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     children=[
-                        dcc.Input(id="layFlat_min",
+                        dcc.Input(id="layflat_min",
                                   type="number",
+                                  # value=0,
                                   placeholder="LayFlat min"),
-                        dcc.Input(id="layFlat_max",
+                        dcc.Input(id="layflat_max",
                                   type="number",
+                                  # value=100,
                                   placeholder="LayFlat max")
                     ],
                     style={
@@ -104,29 +108,57 @@ app.layout = html.Div(
                 )
             ]
         ),
+
         html.Div(
             children=[
                 html.Div(
                     children=[
-                        dcc.Graph(id="chart", config={"displayModeBar": False}),
-                    ], className="card"
-                )
-            ], className="wrapper"
-        )
+                        html.Div(
+                            children=[
+                                dcc.Graph(
+                                    id="md_tear", config={"displayModeBar": True}),
+                            ], className="card"
+                        ),
+                        html.Div(
+                            children=[
+                                dcc.Graph(
+                                    id="td_tear", config={"displayModeBar": True}),
+                            ], className="card"
+                        ),
+                    ], className="wrapper"
+                )])
     ]
 )
 
 
 @app.callback(
-    [Output("chart", "figure")],
+    [Output('md_tear', 'figure'), Output('td_tear', 'figure')],
     [Input("date_range", "start_date"),
-     Input("date_range", "end_date")]
+     Input("date_range", "end_date"),
+     # Input("layflat_min", "value"),
+     # Input("layflat_max", "value"),
+     Input("resin", "value"),
+     Input("color_filter", "value")
+     ]
 )
-def update_chart(start_date, end_date):
-    mask = ((data.Date >= start_date) & (data.Date <= end_date))
+def update_chart(start_date, end_date, resin, color):
+    if resin == 'All':
+        resin = 'HD' or 'LDPE'
+    if color == 'All':
+        color = list(data['Color'].unique())
+    else:
+        color = [color]
+    mask = (
+            (data.Date >= start_date) & (data.Date <= end_date)
+            # & (data.Layflat >= 10)
+            # & (data.Layflat <= 40)
+            & (data.Resin == resin)
+            & (data.Color.isin(color))
+
+    )
     filter_data = data.loc[mask]
-    property_chart = {
-        "date": [
+    md_tear_figure = {
+        "data": [
             {
                 "x": filter_data["Date"],
                 "y": filter_data["md_tear"],
@@ -140,13 +172,34 @@ def update_chart(start_date, end_date):
                 "x": 0.5,
                 "xanchor": "left",
             },
-            "xaxis": {"fixedrange": True},
-            "yaxis": {"tickprefix": "$", "fixedrange": True},
+            # "xaxis": {"fixedrange": True},
+            # "yaxis": {"fixedrange": True},
             "colorway": ["#17B897"]
         }
     }
-    return property_chart
+
+    td_tear_figure = {
+        "data": [
+            {
+                "x": filter_data["Date"],
+                "y": filter_data["td_tear"],
+                "type": "Line",
+                "hovertemplate": "%{y:.2f}<extra></extra>",
+            },
+        ],
+        "layout": {
+            "title": {
+                "text": "TD Tear",
+                "x": 0.5,
+                "xanchor": "left",
+            },
+            # "xaxis": {"fixedrange": True},
+            # "yaxis": {"fixedrange": True},
+            "colorway": ["#17B897"]
+        }
+    }
+    return md_tear_figure, td_tear_figure
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=1234)
+    app.run_server(debug=True, port=1235)

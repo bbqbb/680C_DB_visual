@@ -20,6 +20,17 @@ def yyyy(y):
         return y
 
 
+def fraction_to_decimal(fraction_str):
+    if type(fraction_str) == str:
+        _ = fraction_str.split(" ")
+        whole, frac = _[0], _[2]
+        frac_num, frac_denom = frac.split('/')
+        return int(whole) + int(frac_num) / int(frac_denom)
+    elif type(fraction_str) == float:
+        return
+    else:
+        return 0
+
 # df = pd.read_excel("T-Shirt.HD.xlsx", sheet_name="Follow-up")
 # date = df["Date"]
 #
@@ -29,5 +40,3 @@ def yyyy(y):
 #
 # df['Date'] = pd.to_datetime(df['Date'], format="%m.%d.%Y", errors='coerce')
 # print(df['Date'])
-
-
