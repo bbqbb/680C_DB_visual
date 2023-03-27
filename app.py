@@ -69,9 +69,9 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="color_filter",
                             placeholder="Color",
-                            options=[{'label': 'All', 'value': 'All'}] +
-                                    [{"label": color, "value": color}
-                                     for color in data["Color"].unique()]
+                            options=[{'label': 'All', 'value': 'All'}]
+                                    + [{"label": color, "value": color}
+                                       for color in data["Color"].unique()]
                             ,
                             style={'width': '120px'}
                         )
@@ -81,11 +81,11 @@ app.layout = html.Div(
                     children=[
                         dcc.Dropdown(
                             id="line_filter",
-                            multi=True, placeholder="Line Numer",
-                            options=[
-                                {"label": line, "value": line}
-                                for line in data["LineNumber"].unique()
-                            ],
+                            multi=True,
+                            placeholder="Line Numer",
+                            options=[{'label': 'All', 'value': 'All'}]
+                                    + [{"label": line, "value": line}
+                                       for line in data["LineNumber"].unique()]
                         )
                     ]
                 ),
@@ -119,42 +119,64 @@ app.layout = html.Div(
                                     id="md_tear", config={"displayModeBar": True}),
                             ], className="card"
                         ),
+                        # md_tear
                         html.Div(
                             children=[
                                 dcc.Graph(
                                     id="td_tear", config={"displayModeBar": True}),
                             ], className="card"
                         ),
+                        # md_tensil
+                        html.Div(
+                            children=[
+                                dcc.Graph(
+                                    id="md_tensil", config={"displayModeBar": True}),
+                            ], className="card"
+                        ),
                     ], className="wrapper"
-                )])
+                )
+            ]
+        )
     ]
 )
 
 
 @app.callback(
-    [Output('md_tear', 'figure'), Output('td_tear', 'figure')],
+    [Output('md_tear', 'figure'),
+     Output('td_tear', 'figure'),
+     Output('md_tensil', 'figure')],
     [Input("date_range", "start_date"),
      Input("date_range", "end_date"),
+     Input("resin", "value"),
+     Input("color_filter", "value"),
+     Input('line_filter', 'value')
      # Input("layflat_min", "value"),
      # Input("layflat_max", "value"),
-     Input("resin", "value"),
-     Input("color_filter", "value")
      ]
 )
-def update_chart(start_date, end_date, resin, color):
-    if resin == 'All':
+def update_chart(start_date, end_date, resin, color, lines):
+    if resin == 'All' or resin is None:
         resin = 'HD' or 'LDPE'
-    if color == 'All':
+    if color == 'All' or color is None:
         color = list(data['Color'].unique())
     else:
         color = [color]
+    if lines is None:
+        line = list(data['LineNumber'].unique())
+    elif 'All' in lines:
+        line = list(data['LineNumber'].unique())
+    elif type(lines) == list:
+        line = lines
+    else:
+        line = [lines]
+    # if layflat_min and layflat_max is None:
+
     mask = (
             (data.Date >= start_date) & (data.Date <= end_date)
-            # & (data.Layflat >= 10)
-            # & (data.Layflat <= 40)
+            # & (data.Layflat >= 10)& (data.Layflat <= 40)
             & (data.Resin == resin)
             & (data.Color.isin(color))
-
+            & (data.LineNumber.isin(line))
     )
     filter_data = data.loc[mask]
     md_tear_figure = {
@@ -198,7 +220,27 @@ def update_chart(start_date, end_date, resin, color):
             "colorway": ["#17B897"]
         }
     }
-    return md_tear_figure, td_tear_figure
+    md_tensil_figure = {
+        "data": [
+            {
+                "x": filter_data["Date"],
+                "y": filter_data["md_tensil (Lb/in)"],
+                "type": "Line",
+                "hovertemplate": "%{y:.2f}<extra></extra>",
+            },
+        ],
+        "layout": {
+            "title": {
+                "text": "MD Tensil",
+                "x": 0.5,
+                "xanchor": "left",
+            },
+            # "xaxis": {"fixedrange": True},
+            # "yaxis": {"fixedrange": True},
+            "colorway": ["#17B897"]
+        }
+    }
+    return md_tear_figure, td_tear_figure, md_tensil_figure
 
 
 if __name__ == "__main__":
