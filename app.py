@@ -133,6 +133,12 @@ app.layout = html.Div(
                                     id="md_tensil", config={"displayModeBar": True}),
                             ], className="card"
                         ),
+                        html.Div(
+                            children=[
+                                dcc.Graph(
+                                    id="td_tensil", config={"displayModeBar": True}),
+                            ], className="card"
+                        ),
                     ], className="wrapper"
                 )
             ]
@@ -144,17 +150,18 @@ app.layout = html.Div(
 @app.callback(
     [Output('md_tear', 'figure'),
      Output('td_tear', 'figure'),
-     Output('md_tensil', 'figure')],
+     Output('md_tensil', 'figure'),
+     Output('td_tensil', 'figure')],
     [Input("date_range", "start_date"),
      Input("date_range", "end_date"),
      Input("resin", "value"),
      Input("color_filter", "value"),
-     Input('line_filter', 'value')
-     # Input("layflat_min", "value"),
-     # Input("layflat_max", "value"),
+     Input('line_filter', 'value'),
+     Input("layflat_min", "value"),
+     Input("layflat_max", "value")
      ]
 )
-def update_chart(start_date, end_date, resin, color, lines):
+def update_chart(start_date, end_date, resin, color, lines, layflat_min, layflat_max):
     if resin == 'All' or resin is None:
         resin = 'HD' or 'LDPE'
     if color == 'All' or color is None:
@@ -169,11 +176,16 @@ def update_chart(start_date, end_date, resin, color, lines):
         line = lines
     else:
         line = [lines]
-    # if layflat_min and layflat_max is None:
+    if not layflat_min:
+        layflat_min = 0
+    if not layflat_max:
+        layflat_max =999
+
+
 
     mask = (
             (data.Date >= start_date) & (data.Date <= end_date)
-            # & (data.Layflat >= 10)& (data.Layflat <= 40)
+            & (data.Layflat >= layflat_min)& (data.Layflat <= layflat_max)
             & (data.Resin == resin)
             & (data.Color.isin(color))
             & (data.LineNumber.isin(line))
@@ -240,7 +252,27 @@ def update_chart(start_date, end_date, resin, color, lines):
             "colorway": ["#17B897"]
         }
     }
-    return md_tear_figure, td_tear_figure, md_tensil_figure
+    td_tensil_figure = {
+        "data": [
+            {
+                "x": filter_data["Date"],
+                "y": filter_data["td_tensil (Lb/in)"],
+                "type": "Line",
+                "hovertemplate": "%{y:.2f}<extra></extra>",
+            },
+        ],
+        "layout": {
+            "title": {
+                "text": "TD Tensil",
+                "x": 0.5,
+                "xanchor": "left",
+            },
+            # "xaxis": {"fixedrange": True},
+            # "yaxis": {"fixedrange": True},
+            "colorway": ["#17B897"]
+        }
+    }
+    return md_tear_figure, td_tear_figure, md_tensil_figure, td_tensil_figure
 
 
 if __name__ == "__main__":
